@@ -7,7 +7,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class Palette {
-  static Color primaryChatBubbleColor = Color(0xff5fc9f8);
+  static Color primaryChatBubbleColor = Color(0xffd1d1d1);
   static Color secondaryChatBubbleColor = Color(0xffFC3D39);
   static Color textMessageColor = Colors.black;
   static Color primaryTextColor = Colors.black;
@@ -15,5 +15,6 @@ class Palette {
   static Color secondaryColor = Colors.blueAccent;
   static Color primaryBackgroundColor = Colors.white;
   static Color greyColor = Colors.grey;
-  static Color primaryColor = Colors.blue;
+  static Color primaryColor = Colors.red;
+  static Color appBar = Color(0xff6a6c6e);
 }

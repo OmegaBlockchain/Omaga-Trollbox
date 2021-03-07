@@ -375,7 +375,22 @@ class MessageNodes {
     } else if (msgHeader._command == getdata) {
       // We don't check so we will never get this as we don't care
     } else if (msgHeader._command == addr) {
-      // We don't check so we will never get this as we don't care
+      MsgAddr msgAddr = MsgAddr();
+      msgAddr.deserialize(msgHeader._payload);
+
+      List<CAddress> okAddr = msgAddr.addrList;
+      List<CAddressLite> okAddrG = [];
+
+      for (int i = 0; i < okAddr.length; i++) {
+        okAddrG.add(CAddressLite(okAddr[i].ip, okAddr[i].port));
+      }
+      List<CAddressLite> okAddrGG = okAddrG.toSet().toList();
+      // any nodes we get try to add.
+      for (int i = 0; i < okAddrGG.length; i++) {
+        if (nodes.length <= 6) {
+          addNode(okAddrGG[i].ip, okAddrGG[i].port);
+        }
+      }
     } else if (msgHeader._command == reject) {
       MsgReject msgReject = new MsgReject();
       msgReject.deserialize(msgHeader._payload);
@@ -455,22 +470,26 @@ void startServerSocket() {
 
 void startNode() {
   print('hi');
-  bool triedToConnectToAllFixedSeedsAlready = false;
 
-  Timer.periodic(Duration(seconds: 1), (timer) {
+  for (var i=  0; i < nodeList.length; i++) {
+    addNode(nodeList[i]);
+  }
+
+  for (var i = 0; i < nodes.length; i++) {i
+    sendGetAddrMessage(nodes[i]);
+  }
+
+  Timer.periodic(Duration(seconds: 20), (timer) {
     if (nodes.length <= 6) {
-      if (!triedToConnectToAllFixedSeedsAlready) {
-        for (var i=  0; i < nodeList.length; i++) {
-          addNode(nodeList[i]);
-          print(i);
-          print(nodeList.length);
-          if (i == nodeList.length - 1) {
-            triedToConnectToAllFixedSeedsAlready = true;
-            print('to be ape');
-          }
-        }
+      for (var i = 0; i < nodes.length; i++) {
+        sendGetAddrMessage(nodes[i]);
       }
-
+    }
+    // if nodes are ever zero try to add nodes from nodes list again
+    if (nodes.length == 0) {
+      for (var i=  0; i < nodeList.length; i++) {
+        addNode(nodeList[i]);
+      }
     }
   });
 
@@ -480,21 +499,36 @@ void startNode() {
   //addNode('192.168.0.193');
 }
 
-bool addNode(String ip) {
-  print(ip);
-  print('length ${nodes.length}');
+
+int periodCount = 0;
+bool addNode(String ip, [port = DEFAULT_PORT]) {
+  print('poggers');
+  periodCount++;
+  if (periodCount >= 6) {
+    periodCount--;
+    return false;
+  }
+  if (nodes.length > 6) {
+    periodCount--;
+    return false;
+  }
+
   // If node is already connected don't add it
   for (var i = 0; i < nodes.length; i++) {
     if (nodes[i].ip == ip) {
+      periodCount--;
       return false;
     }
   }
 
-  Socket.connect(ip, DEFAULT_PORT).then((Socket socket) {
+  Socket.connect(ip, port).then((Socket socket) {
     handleConnection(socket, true);
+    periodCount--;
     return true;
   }, onError: (e) {
     // If we get a error connections failed return false
+    print('Error $e');
+    periodCount--;
     return false;
   });
 }
@@ -581,6 +615,32 @@ void removeOldAnonMessage() {
  });
 }
 
+class MsgAddr {
+  List<CAddress> addrList;
+
+  MsgAddr() {
+    addrList = [];
+  }
+
+  void deserialize(List<int> data) {
+    int addrCount = listIntToUint8LE(data.sublist(0, 1));
+    for (var i=0; i < addrCount; i++) {
+      CAddress cAddress = CAddress.notVersion();
+
+      String ip;
+      if (IterableEquality().equals(data.sublist(13 + (30 * i), 25 + (30 * i)), IPV4_COMPAT)) {
+        ip = getIPv4String(data.sublist(25, 29));
+      } else {
+        ip; // I didn't write code to support IPv6, but if I did it would be here.
+        // we are passing cause we don't want to handle IPv6 nodes
+        continue;
+      }
+      cAddress.setData(listIntToUint32LE(data.sublist(1 + (30 * i), 5 + (30 * i))), listIntToUint64LE(data.sublist(5 + (30 * i), 13 + (30 * i))), ip, listIntToUint16BE(data.sublist(29 + (30 * i), 31 + (30 * i))).abs());
+      addrList.add(cAddress);
+    }
+  }
+}
+
 class CAddress {
   int nServices;
   int nTime;
@@ -601,25 +661,63 @@ class CAddress {
     ip = ipIn;
     port = portIn;
     nTime = new DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    isVersionMessage = true;
+  }
+
+  CAddress.notVersion() {
+    nServices = 0;
+    ip = "0.0.0.0";
+    port = DEFAULT_PORT;
+    nTime = new DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    isVersionMessage = false;
+  }
+
+  void setData(int inputTime, int inputService, String inputIp, int inputPort) {
+    nServices = inputService;
+    ip = inputIp;
+    port = inputPort;
+    nTime = inputTime;
   }
 
   List<int> serialize() {
     List<int> messageData;
     if (isVersionMessage) {
       messageData = uint64ToListIntLE(nServices) + getIPv4ListInt(ip) + uint16ToListIntBE(port);
+    } else {
+      messageData = uint32ToListIntLE(nTime) + uint64ToListIntLE(nServices) + getIPv4ListInt(ip) + uint16ToListIntBE(port);
     }
     return messageData;
   }
 
   void deserialize(List<int> data) {
     if (isVersionMessage) {
-      nServices = listIntToUint32LE(data.sublist(0, 8));
+      nServices = listIntToUint64LE(data.sublist(0, 8));
       if (data.sublist(8, 20) == IPV4_COMPAT) {
         ip = getIPv4String(data.sublist(20, 24));
       } else {
         ip; // I didn't write code to support IPv6, but if I did it would be here.
       }
       port = listIntToUint16BE(data.sublist(24, 26));
+    } else {
+      nTime = listIntToUint32LE(data.sublist(0, 4));
+      nServices = listIntToUint64LE(data.sublist(4, 12));
+      if (IterableEquality().equals(data.sublist(12, 24), IPV4_COMPAT)) {
+        ip = getIPv4String(data.sublist(24, 28));
+      } else {
+        ip; // I didn't write code to support IPv6, but if I did it would be here.
+      }
+      port = listIntToUint16BE(data.sublist(28, 30));
     }
   }
 }
+
+class CAddressLite {
+  String ip;
+  int port;
+
+  CAddressLite(String inputIp, int inputPort) {
+    ip = inputIp;
+    port = inputPort;
+  }
+}
+

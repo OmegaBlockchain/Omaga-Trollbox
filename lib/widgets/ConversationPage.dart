@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:omega_trollbox/config/Palette.dart';
 import 'ChatAppBar.dart';
 import 'ChatListWidget.dart';
 import 'InputWidget.dart';
@@ -18,7 +19,25 @@ class _ConversationPageState extends State<ConversationPage> {
     return SafeArea(
         child: Scaffold(
           appBar: AppBar(
-            title: Text('Omega TrollBox'),
+            titleSpacing: 10.0,
+            //elevation: 5.0,
+            title: Row(
+                children: <Widget>[
+                  Align(
+                    alignment: Alignment.center,
+                    child: Image.asset(
+                      'assets/images/OMEGA_cir.png',
+                      height: 30,
+                    ),
+                  ),
+                  SizedBox(width: 5,),
+                  Align(
+                    alignment: Alignment.center,
+                    child: Text('Omega TrollBox'),
+                  ),
+              ]
+            ),
+            backgroundColor: Palette.appBar,
             actions: <Widget> [
               StreamBuilder(
                 stream: widget.bloc.nodeCount,
