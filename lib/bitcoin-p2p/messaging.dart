@@ -6,7 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-
+import 'package:http/http.dart' as http;
 import 'util.dart';
 import 'package:crypto/crypto.dart';
 import 'package:collection/collection.dart';
@@ -20,7 +20,7 @@ List<int> heightt = [0x55, 0x81, 0x01, 0x00];
 const int DEFAULT_PORT = 7777;
 List<int> IPV4_COMPAT = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff];
 List<int> magic = [0xbf, 0x0c, 0x6b, 0xbd];
-List<String> nodeList = ["173.212.254.163", "207.148.123.138", "167.86.106.67", "167.86.91.191", "144.91.97.155", "207.180.202.182"];
+Map<String, int> nodeList = Map<String, int>();
 List<MessageNodes> nodes = [];
 Map<List<int>, CAnonMsg> mapAnonMsg = Map<List<int>, CAnonMsg>();
 ServerSocket server;
@@ -471,27 +471,40 @@ void startServerSocket() {
 void startNode() {
   print('hi');
 
-  for (var i=  0; i < nodeList.length; i++) {
-    addNode(nodeList[i]);
-  }
+  // getnode list
+  fetchNodeList().then((value) {
+    nodeList = value.listOfNodes;
 
-  for (var i = 0; i < nodes.length; i++) {
-    sendGetAddrMessage(nodes[i]);
-  }
+    // code start
 
-  Timer.periodic(Duration(seconds: 20), (timer) {
-    if (nodes.length <= 6) {
-      for (var i = 0; i < nodes.length; i++) {
-        sendGetAddrMessage(nodes[i]);
-      }
+    for (var k in nodeList.keys) {
+      addNode(k, nodeList[k]);
     }
-    // if nodes are ever zero try to add nodes from nodes list again
-    if (nodes.length == 0) {
-      for (var i=  0; i < nodeList.length; i++) {
-        addNode(nodeList[i]);
-      }
+
+    for (var i = 0; i < nodes.length; i++) {
+      sendGetAddrMessage(nodes[i]);
     }
+
+    Timer.periodic(Duration(seconds: 20), (timer) {
+      if (nodes.length <= 6) {
+        for (var i = 0; i < nodes.length; i++) {
+          sendGetAddrMessage(nodes[i]);
+        }
+      }
+      // if nodes are ever zero try to add nodes from nodes list again
+      if (nodes.length == 0) {
+        for (var k in nodeList.keys) {
+          addNode(k, nodeList[k]);
+        }
+      }
+    });
+
+    // code end
+
+
   });
+
+  //end get node list
 
   //addNode(nodeList[1]);
   //addNode(nodeList[3]);
@@ -499,10 +512,8 @@ void startNode() {
   //addNode('192.168.0.193');
 }
 
-
 int periodCount = 0;
 bool addNode(String ip, [port = DEFAULT_PORT]) {
-  print('poggers');
   periodCount++;
   if (periodCount >= 6) {
     periodCount--;
