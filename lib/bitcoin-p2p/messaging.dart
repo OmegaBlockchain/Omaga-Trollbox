@@ -475,7 +475,7 @@ void startNode() {
     addNode(nodeList[i]);
   }
 
-  for (var i = 0; i < nodes.length; i++) {i
+  for (var i = 0; i < nodes.length; i++) {
     sendGetAddrMessage(nodes[i]);
   }
 

@@ -48,8 +48,10 @@ class InputWidget extends StatelessWidget {
               child: new IconButton(
                 icon: new Icon(Icons.send),
                 onPressed: () => {
-                  bloc.sendAnonMsgEventSink.add(textEditingController.text),
-                  textEditingController.clear()
+                  if (!isAllSpaces(textEditingController.text)) {
+                    bloc.sendAnonMsgEventSink.add(textEditingController.text),
+                    textEditingController.clear()
+                  }
                 },
                 color: Palette.primaryColor,
               ),
@@ -65,5 +67,13 @@ class InputWidget extends StatelessWidget {
               top: new BorderSide(color: Palette.greyColor, width: 0.5)),
           color: Colors.white),
     );
+  }
+
+  bool isAllSpaces(String input) {
+    String output = input.replaceAll(' ', '');
+    if(output == '') {
+      return true;
+    }
+    return false;
   }
 }
