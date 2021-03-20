@@ -156,7 +156,7 @@ class NodeListClass {
 }
 
 Future<NodeListClass> fetchNodeList() async {
-  final response = await http.get(Uri.parse('https://raw.githubusercontent.com/KolbyML/cdn/main/omegaNodeList.json'));
+  final response = await http.get(Uri.parse('https://omegablockchain.net/omeganodelist.json'));
   if (response.statusCode == 200) {
     print(jsonDecode(response.body));
     return NodeListClass.fromJson(json.decode(response.body));
