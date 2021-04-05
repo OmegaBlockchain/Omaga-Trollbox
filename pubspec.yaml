@@ -77,6 +77,6 @@ flutter:
 
 
 flutter_icons:
-  image_path: 'assets/images/OMEGA_cir.png'
+  image_path: 'assets/images/OMEGA_cir_Icon.png'
   android: true
   ios: true
