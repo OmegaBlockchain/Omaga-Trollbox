@@ -404,11 +404,15 @@ class MessageNodes {
 
       List<CAddress> okAddr = msgAddr.addrList;
       List<CAddressLite> okAddrG = [];
-      ///todo: make sure to make this so it only adds one node from a ip to the list since masternodes run multiple nodes on one ip address you can be trying to add nodes which are practically useless to connect to.
+
       for (int i = 0; i < okAddr.length; i++) {
-        okAddrG.add(CAddressLite(okAddr[i].ip, okAddr[i].port));
+        if (okAddr[i].port == 7777) {
+          okAddrG.add(CAddressLite(okAddr[i].ip, okAddr[i].port));
+        }
       }
+
       List<CAddressLite> okAddrGG = okAddrG.toSet().toList();
+
       // any nodes we get try to add.
       for (int i = 0; i < okAddrGG.length; i++) {
         if (nodes.length <= 6) {
