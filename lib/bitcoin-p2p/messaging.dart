@@ -285,19 +285,43 @@ class MessageNodes {
   }
 
   void processMessages(List<int> data) {
+    //
+    // Message format
+    //  (4) message start
+    //  (12) command
+    //  (4) size
+    //  (4) checksum
+    //  (x) data
+    //
+    List<int> mutableDataList = new List<int>.from(data);
     Map<int, List<int>> listOfTcpPackets = new Map<int, List<int>>();
+    List<int> dataTmp = [];
     int k = 0;
-    for (int i = 0; i < data.length; i++) {
-      if (IterableEquality().equals([data[i], data[(i + 1 >= data.length) ? i : i + 1], data[(i + 2 >= data.length) ? i : i + 2], data[(i + 3 >= data.length) ? i : i + 3]], magic)) {
-        k++;
-      }
-      if (listOfTcpPackets[k - 1] == null) {
-        listOfTcpPackets[k - 1] = [];
-        listOfTcpPackets[k - 1] += [data[i]];
-      } else {
-        listOfTcpPackets[k - 1] += [data[i]];
+
+    while (mutableDataList.isNotEmpty) {
+      if (IterableEquality().equals([mutableDataList[0], mutableDataList[1], mutableDataList[2], mutableDataList[3]], magic)) {
+        int size = listIntToUint32LE(mutableDataList.sublist(16,20));
+        int checksum = listIntToUint32LE(mutableDataList.sublist(20,24));
+        List<int> payloadData =  mutableDataList.sublist(24, 24 + size);
+        int checksumCalculated = listIntToUint32LE(sha256.convert(sha256.convert(payloadData).bytes).bytes.sublist(0, 4));
+
+        if (checksum == checksumCalculated) {
+          listOfTcpPackets[k] = [];
+          listOfTcpPackets[k] = mutableDataList.sublist(0, 24 + size);
+          k += 1;
+
+          if (mutableDataList.length > 24 + size) {
+            dataTmp.clear();
+            dataTmp = new List<int>.from(mutableDataList.sublist(24 + size));
+            mutableDataList.clear();
+            mutableDataList = new List<int>.from(dataTmp);
+          } else {
+            mutableDataList.clear();
+          }
+        }
       }
     }
+
     listOfTcpPackets.values.forEach((element) {
       processMessage(element);
     });
